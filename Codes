@@ -1,0 +1,66 @@
+#Convert “y” to numerical value: Create a new column “y_num” in the table# 
+proc sql;
+alter table bank
+add y_num numeric;
+
+proc sql;
+update bank
+set y_num = 1
+where y = 'ye';
+
+proc sql;
+update bank
+set y_num = 0
+where y = 'no'; 
+
+#Summarize by marital status and education: and display in descending order#
+proc sql;
+select marital, education, count(*) as num_rec
+from bank
+group by marital, education
+order by num_rec desc;
+
+#List Top 5 campaigns with conversion rate#
+proc sql outobs=5;
+select campaign,
+      count(*) as num_rec,
+      avg(y_num) as conv_rate
+from bank
+group by campaign
+order by conv_rate desc;
+
+#Conversion rate by marital status and age#
+proc sql;
+  select t1.marital,
+  t1.avg_y as avg_conv_young,
+  t2.avg_y as avg_conv_old,
+  t1.avg_y-t2.avg_y as diff
+from
+  (select marital, avg(y_num) as avg_y
+  from bank
+  where age <= 40
+  group by marital) as t1,
+  (select marital, avg(y_num) as avg_y
+  from bank
+  where age > 40
+  group by marital) as t2
+where t1.marital = t2.marital;
+
+#List the most effective campaign in different segments#
+proc sql;
+select t1.education, t1.campaign, t1.conv_rate
+from
+     (select education,
+     campaign, 
+     avg(y_num) as conv_rate
+  from bank
+  group by education, campaign) as t1
+where t1.conv_rate =
+    (select max(t2.conv_rate)
+     from
+        (select education,
+        campaign,
+        avg(y_num) as conv_rate
+     from bank
+     group by education, campaign) as t2
+  where t2.education = t1.education);
